@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import subprocess
 import sys
@@ -6,6 +6,9 @@ import socketserver
 
 import os
 from dotenv import load_dotenv
+
+from src.server import CaptivePortal
+from src.database.ddl_sql import sql_create_table_user
 
 load_dotenv()
 
@@ -15,12 +18,12 @@ IFACE      = os.getenv('IFACE')
 IP_ADDRESS = os.getenv('IP_ADDRESS')
 NETMASK    = os.getenv('NETMASK')
 
-from src.server import CaptivePortal
-
 def migration():
-    print("init: migration database")
+    print("INIT: migration database")
+    return sql_create_table_user()
 
 def start(CaptivePortal):
+    print("Starting Server")
     print("Updating iptables")
     print(".. Allow TCP DNS")
     subprocess.call(["iptables", "-A", "FORWARD", "-i", IFACE, "-p", "tcp", "--dport", "53", "-j" ,"ACCEPT"])
