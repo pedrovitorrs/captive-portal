@@ -85,30 +85,3 @@ class CaptivePortal(http.server.SimpleHTTPRequestHandler):
         else:
             #show the login form
             self.wfile.write(self.html_login.encode())
-
-print("*********************************************")
-print("* Note, if there are already iptables rules *")
-print("* this script may not work. Flush iptables  *")
-print("* at your own risk using iptables -F        *")
-print("*********************************************")
-print("Updating iptables")
-print(".. Allow TCP DNS")
-subprocess.call(["iptables", "-A", "FORWARD", "-i", IFACE, "-p", "tcp", "--dport", "53", "-j" ,"ACCEPT"])
-print(".. Allow UDP DNS")
-subprocess.call(["iptables", "-A", "FORWARD", "-i", IFACE, "-p", "udp", "--dport", "53", "-j" ,"ACCEPT"])
-print(".. Allow traffic to captive portal")
-subprocess.call(["iptables", "-A", "FORWARD", "-i", IFACE, "-p", "tcp", "--dport", str(PORT),"-d", IP_ADDRESS, "-j" ,"ACCEPT"])
-print(".. Block all other traffic")
-subprocess.call(["iptables", "-A", "FORWARD", "-i", IFACE, "-j" ,"DROP"])
-print("Starting web server")
-
-httpd = socketserver.TCPServer(((IP_ADDRESS, PORT)), CaptivePortal)
-
-print("Redirecting HTTP traffic to captive portal")
-subprocess.call(["iptables", "-t", "nat", "-A", "PREROUTING", "-i", IFACE, "-p", "tcp", "--dport", "80", "-j" ,"DNAT", "--to-destination", IP_ADDRESS+":"+str(PORT)])
-
-try:
-    httpd.serve_forever()
-except KeyboardInterrupt:
-    pass
-httpd.server_close()
