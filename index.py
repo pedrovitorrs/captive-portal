@@ -8,7 +8,8 @@ import os
 from dotenv import load_dotenv
 
 from src.server import CaptivePortal
-from src.database.ddl_sql import sql_create_table_user
+from src.database.ddl_sql import sql_create_tables
+from src.helpers import loggerHelper
 
 load_dotenv()
 
@@ -18,28 +19,43 @@ IFACE      = os.getenv('IFACE')
 IP_ADDRESS = os.getenv('IP_ADDRESS')
 NETMASK    = os.getenv('NETMASK')
 
+# Boostrap logger helper
+loggerHelper.setup()
+loggerHelper.set_file_name()
+
 def migration():
-    print("INIT: migration database")
-    return sql_create_table_user()
+    loggerHelper.write("[INDEX] migration", "INIT: migration database")
+    return sql_create_tables()
 
 def start(CaptivePortal):
-    print("Starting Server")
-    print("Updating iptables")
-    print(".. Allow TCP DNS")
+    loggerHelper.write("[INDEX] start", "Starting Server")
+    loggerHelper.write("[INDEX] start", "Updating iptables")
+    loggerHelper.write("[INDEX] start", "Allow TCP DNS")
+
     subprocess.call(["iptables", "-A", "FORWARD", "-i", IFACE, "-p", "tcp", "--dport", "53", "-j" ,"ACCEPT"])
-    print(".. Allow UDP DNS")
+    
+    loggerHelper.write("[INDEX] start", "Allow UDP DNS")
+    
     subprocess.call(["iptables", "-A", "FORWARD", "-i", IFACE, "-p", "udp", "--dport", "53", "-j" ,"ACCEPT"])
-    print("... Setting an IP ADDRESS")
+    
+    loggerHelper.write("[INDEX] start", "Setting an IP ADDRESS")
+    
     subprocess.call(["ip", "addr", "add", IP_ADDRESS+NETMASK, "dev", IFACE])
-    print(".. Allow traffic to captive portal")
+    
+    loggerHelper.write("[INDEX] start", "Allow traffic to captive portal")
+    
     subprocess.call(["iptables", "-A", "FORWARD", "-i", IFACE, "-p", "tcp", "--dport", str(PORT),"-d", IP_ADDRESS, "-j" ,"ACCEPT"])
-    print(".. Block all other traffic")
+
+    loggerHelper.write("[INDEX] start", "Block all other traffic")
+
     subprocess.call(["iptables", "-A", "FORWARD", "-i", IFACE, "-j" ,"DROP"])
-    print("Starting web server")
+
+    loggerHelper.write("[INDEX] start", "Starting web server")
 
     httpd = socketserver.TCPServer(((IP_ADDRESS, PORT)), CaptivePortal)
 
-    print("Redirecting HTTP traffic to captive portal")
+    loggerHelper.write("[INDEX] start", "Redirecting HTTP traffic to captive portal")
+
     subprocess.call(["iptables", "-t", "nat", "-A", "PREROUTING", "-i", IFACE, "-p", "tcp", "--dport", "80", "-j" ,"DNAT", "--to-destination", IP_ADDRESS+":"+str(PORT)])
 
     try:

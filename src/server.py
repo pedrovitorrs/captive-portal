@@ -1,12 +1,14 @@
 #!/usr/bin/python3
 
-import subprocess
 import http.server
 import socketserver
 import cgi
 
 import os
 from dotenv import load_dotenv
+
+from src.app.views import htmlSignin, htmlRedirect, htmlSignup
+from src.app.controllers import signinController
 
 load_dotenv()
 
@@ -18,33 +20,7 @@ IP_ADDRESS = os.getenv('IP_ADDRESS')
 '''
 This it the http server used by the the captive portal
 '''
-class CaptivePortal(http.server.SimpleHTTPRequestHandler):
-    #this is the index of the captive portal
-    #it simply redirects the user to the to login page
-    html_redirect = """
-    <html>
-    <head>
-        <meta http-equiv="refresh" content="0; url=http://%s:%s/login" />
-    </head>
-    <body>
-        <b>Redirecting to login page</b>
-    </body>
-    </html>
-    """%(IP_ADDRESS, PORT)
-    #the login page
-    html_login = """
-    <html>
-    <body>
-        <b>Login Form</b>
-        <form method="POST" action="do_login">
-        Username: <input type="text" name="username"><br>
-        Password: <input type="password" name="password"><br>
-        <input type="submit" value="Submit">
-        </form>
-    </body>
-    </html>
-    """
-    
+class CaptivePortal(http.server.SimpleHTTPRequestHandler):    
     '''
     if the user requests the login page show it, else
     use the redirect page
@@ -54,34 +30,39 @@ class CaptivePortal(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
-        if path == "/login":
-            self.wfile.write(self.html_login.encode())
+
+        if path == "/signin":
+            self.wfile.write(htmlSignin.getViewSigninEncode())
+        elif path == "/signup":
+            self.wfile.write(htmlSignup.getViewSignupEncode())
         else:
-            self.wfile.write(self.html_redirect.encode())
+            self.wfile.write(htmlRedirect.getViewRedirectEncode())
     '''
     this is called when the user submits the login form
     '''
     def do_POST(self):
+        LIST_CONTENTS = []
+        path = self.path
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
+
         form = cgi.FieldStorage(
             fp=self.rfile, 
             headers=self.headers,
-            environ={'REQUEST_METHOD':'POST',
-                     'CONTENT_TYPE':self.headers['Content-Type'],
-                     })
+            environ={
+                'REQUEST_METHOD':'POST',
+                'CONTENT_TYPE':self.headers['Content-Type'],
+                }
+            )
+        
         username = form.getvalue("username")
         password = form.getvalue("password")
-        #dummy security check
-        if username == 'nikos' and password == 'fotiou':
-            #authorized user
-            remote_IP = self.client_address[0]
-            print('New authorization from ', remote_IP)
-            print('Updating IP tables')
-            subprocess.call(["iptables","-t", "nat", "-I", "PREROUTING","1", "-s", remote_IP, "-j" ,"ACCEPT"])
-            subprocess.call(["iptables", "-I", "FORWARD", "-s", remote_IP, "-j" ,"ACCEPT"])
-            self.wfile.write("You are now authorized. Navigate to any URL".encode())
-        else:
-            #show the login form
-            self.wfile.write(self.html_login.encode())
+
+        if path == "/do_signin":
+            # dummy security check
+            if signinController.validation(username, password, self.client_address[0], LIST_CONTENTS):
+                self.wfile.write("You are now authorized. Navigate to any URL".encode())
+            else:
+                # show the login form
+                self.wfile.write(htmlSignin.getViewSigninEncode(LIST_CONTENTS.pop()))
