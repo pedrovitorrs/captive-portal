@@ -4,6 +4,8 @@ import os
 from dotenv import load_dotenv
 from mysql.connector import errorcode
 
+from ..helpers import loggerHelper
+
 load_dotenv()
 
 config = {
@@ -20,11 +22,11 @@ def sql_open_connection():
     return conn
   except mysql.connector.Error as err:
     if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-      print("Infra Database: Something is wrong with your user name or password")
+      loggerHelper.write("[Infra Database] sql_open_connection", "Something is wrong with your user name or password")
     elif err.errno == errorcode.ER_BAD_DB_ERROR:
-      print("Infra Database: Database does not exist")
+      loggerHelper.write("[Infra Database] sql_open_connection", "Database does not exist")
     else:
-      print('Infra Database:' + err)
+      loggerHelper.write("[Infra Database] sql_open_connection", err)
   else:
     sql_close_connection(conn)
 

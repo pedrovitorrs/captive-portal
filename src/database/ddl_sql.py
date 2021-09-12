@@ -1,10 +1,13 @@
 #!/usr/bin/python3
+
 # DDL - DATA DEFINITION LANGUAGE 
 # CREATE, ALTER, DROP, RENAME, TUNCATE COMMENT  
 
 import mysql.connector
 from mysql.connector import errorcode
+
 from .infra_database import sql_open_connection, sql_close_connection
+from ..helpers import loggerHelper
 
 TABLES = {}
 TABLES['clients'] = (
@@ -17,21 +20,21 @@ TABLES['clients'] = (
     "  PRIMARY KEY (`id`)"
     ") ENGINE=InnoDB")
 
-def sql_create_table_user():
+def sql_create_tables():
     connection = sql_open_connection()
     cursor = connection.cursor()
     for table_name in TABLES:
         table_description = TABLES[table_name]
         try:
-            print("DDL SQL: Creating table {} -> ".format(table_name), end='')
+            loggerHelper.write("[DDL SQL] sql_create_tables", "Creating table {} -> ".format(table_name))
             cursor.execute(table_description)
+            connection.commit()
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_TABLE_EXISTS_ERROR:
-                print("Already exists.")
+                loggerHelper.write("[DDL SQL] sql_create_tables", "Table Already exists.")
             else:
-                print(err.msg)
+                loggerHelper.write("[DDL SQL] sql_create_tables", err.msg)
         else:
-            print("Created")
-
+            loggerHelper.write("[DDL SQL] sql_create_tables", "Table created.")
     cursor.close()
     sql_close_connection(connection)
